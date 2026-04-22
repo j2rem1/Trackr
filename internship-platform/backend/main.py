@@ -1,19 +1,15 @@
 from fastapi import FastAPI
-from pydantic_settings import BaseSettings
+from app.config import settings
+from app.db import engine, Base
 
-class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://user:password@localhost:5432/internship"
-    redis_url: str = "redis://localhost:6379"
-    minio_url: str = "http://localhost:9000"
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
-    secret_key: str = "changethis123"
-
-    class Config:
-        env_file = ".env"
-
-settings = Settings()
 app = FastAPI(title="Internship Partnership Platform")
+
+@app.on_event("startup")
+async def startup():
+    
+    from app.models import user
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 @app.get("/health")
 async def health():
@@ -23,8 +19,8 @@ async def health():
     try:
         from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy import text
-        engine = create_async_engine(settings.database_url)
-        async with engine.connect() as conn:
+        test_engine = create_async_engine(settings.database_url)
+        async with test_engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         db_status = "connected"
     except Exception as e:
